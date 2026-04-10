@@ -1,470 +1,3 @@
-# from fastapi import FastAPI
-# from fastapi.responses import HTMLResponse
-# from pydantic import BaseModel
-
-# from vanna_setup import create_agent
-# from utils.validator import validate_sql
-# from utils.formatter import format_response, format_error
-# from utils.charts import generate_chart
-
-# app = FastAPI()
-# agent = create_agent()
-
-
-# class Question(BaseModel):
-#     question: str
-
-
-# @app.post("/chat")
-# def chat(req: Question):
-#     try:
-#         sql = agent.generate_sql(req.question)
-
-#         if not sql:
-#             return format_error("No SQL generated")
-
-#         validate_sql(sql)
-
-#         df = agent.run_sql(sql)
-#         columns = list(df.columns) if df is not None else []
-#         rows = df.values.tolist() if df is not None else []
-
-#         chart = generate_chart(columns, rows)
-#         return format_response(sql, columns, rows, chart)
-
-#     except Exception as e:
-#         print("ERROR:", str(e))
-#         return format_error(str(e))
-
-
-# @app.get("/health")
-# def health():
-#     return {"status": "ok"}
-
-
-# @app.get("/")
-# def root():
-#     return {"message": "NL2SQL API is running 🚀"}
-
-
-# @app.get("/ui", response_class=HTMLResponse)
-# def chat_ui():
-#     return """<!DOCTYPE html>
-# <html lang="en">
-# <head>
-#   <meta charset="UTF-8"/>
-#   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-#   <title>NL2SQL — Query Intelligence</title>
-#   <link rel="preconnect" href="https://fonts.googleapis.com">
-#   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-#   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
-#   <style>
-#     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-#     :root {
-#       --bg:       #07070f;
-#       --surface:  #0d0d1a;
-#       --panel:    #11111f;
-#       --border:   rgba(255,255,255,0.07);
-#       --accent:   #7c6dfa;
-#       --accent2:  #fa6d9a;
-#       --accent3:  #6dfacc;
-#       --text:     #e2e2f0;
-#       --muted:    #52526e;
-#       --radius:   16px;
-#       --font-ui:  'Syne', sans-serif;
-#       --font-code:'JetBrains Mono', monospace;
-#     }
-
-#     html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-code); overflow: hidden; }
-
-#     .blob { position: fixed; border-radius: 50%; filter: blur(120px); pointer-events: none; z-index: 0; opacity: 0.15; }
-#     .blob-1 { width: 600px; height: 600px; background: var(--accent);  top: -200px; left: -150px; }
-#     .blob-2 { width: 500px; height: 500px; background: var(--accent2); bottom: -150px; right: -100px; }
-#     .blob-3 { width: 350px; height: 350px; background: var(--accent3); top: 40%; left: 42%; }
-
-#     .shell {
-#       position: relative; z-index: 1;
-#       display: grid;
-#       grid-template-rows: 64px 1fr auto;
-#       height: 100vh;
-#       max-width: 1080px;
-#       margin: 0 auto;
-#       padding: 0 24px;
-#     }
-
-#     /* ── Header ── */
-#     header {
-#       display: flex; align-items: center; justify-content: space-between;
-#       border-bottom: 1px solid var(--border);
-#     }
-#     .logo {
-#       font-family: var(--font-ui); font-size: 1.1rem; font-weight: 800;
-#       letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px;
-#     }
-#     .logo-dot {
-#       width: 8px; height: 8px; border-radius: 50%;
-#       background: var(--accent3); box-shadow: 0 0 10px var(--accent3);
-#       animation: pulse 2s ease-in-out infinite;
-#     }
-#     @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.75)} }
-
-#     .header-right { display: flex; align-items: center; gap: 10px; }
-#     .badge {
-#       font-size: 0.63rem; font-weight: 600; letter-spacing: 0.1em;
-#       text-transform: uppercase; color: var(--muted);
-#       border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px;
-#     }
-#     .status-dot {
-#       width: 7px; height: 7px; border-radius: 50%;
-#       background: var(--accent3); box-shadow: 0 0 6px var(--accent3);
-#     }
-
-#     /* ── Chat area ── */
-#     .chat-area {
-#       overflow-y: auto; padding: 28px 0;
-#       display: flex; flex-direction: column; gap: 22px;
-#       scrollbar-width: thin; scrollbar-color: var(--border) transparent;
-#     }
-#     .chat-area::-webkit-scrollbar { width: 4px; }
-#     .chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-#     /* ── Messages ── */
-#     .msg { display: flex; gap: 14px; animation: fadeUp 0.3s ease both; }
-#     @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-
-#     .msg-avatar {
-#       width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
-#       display: flex; align-items: center; justify-content: center;
-#       font-size: 0.68rem; font-weight: 700; font-family: var(--font-ui);
-#     }
-#     .msg.user { flex-direction: row-reverse; }
-#     .msg.user .msg-avatar { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
-#     .msg.bot  .msg-avatar { background: var(--panel); border: 1px solid var(--border); color: var(--accent3); }
-
-#     .msg-body { max-width: 82%; display: flex; flex-direction: column; gap: 10px; }
-#     .msg.user .msg-body { align-items: flex-end; }
-
-#     .bubble {
-#       padding: 12px 16px; border-radius: var(--radius);
-#       font-size: 0.82rem; line-height: 1.65;
-#     }
-#     .msg.user .bubble {
-#       background: linear-gradient(135deg, var(--accent) 0%, #5040d0 100%);
-#       color: #fff; border-bottom-right-radius: 4px;
-#     }
-#     .msg.bot .bubble {
-#       background: var(--panel); border: 1px solid var(--border);
-#       color: var(--text); border-bottom-left-radius: 4px;
-#     }
-
-#     /* ── SQL block ── */
-#     .sql-block {
-#       background: #060610; border: 1px solid var(--border);
-#       border-radius: 12px; overflow: hidden; width: 100%;
-#     }
-#     .sql-header {
-#       display: flex; align-items: center; justify-content: space-between;
-#       padding: 7px 14px; border-bottom: 1px solid var(--border);
-#       font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
-#     }
-#     .sql-lang { color: var(--accent3); font-weight: 700; }
-#     .copy-btn {
-#       background: none; border: 1px solid var(--border); cursor: pointer;
-#       color: var(--muted); font-size: 0.68rem; font-family: var(--font-code);
-#       padding: 2px 10px; border-radius: 5px; transition: all 0.2s;
-#     }
-#     .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
-#     .sql-code {
-#       padding: 14px 16px; font-size: 0.77rem; line-height: 1.75;
-#       color: #9b9eff; white-space: pre-wrap; word-break: break-all;
-#     }
-
-#     /* ── Results table ── */
-#     .result-wrap {
-#       background: var(--panel); border: 1px solid var(--border);
-#       border-radius: 12px; overflow: hidden; width: 100%;
-#     }
-#     .result-header {
-#       padding: 8px 14px; border-bottom: 1px solid var(--border);
-#       font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
-#       color: var(--muted); display: flex; justify-content: space-between; align-items: center;
-#     }
-#     .result-count { color: var(--accent3); font-weight: 600; }
-#     .tbl-scroll { overflow-x: auto; max-height: 240px; overflow-y: auto; }
-#     table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
-#     thead th {
-#       padding: 8px 14px; text-align: left;
-#       font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase;
-#       color: var(--muted); background: var(--surface);
-#       position: sticky; top: 0; z-index: 2;
-#       border-bottom: 1px solid var(--border);
-#     }
-#     tbody tr { border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.15s; }
-#     tbody tr:hover { background: rgba(124,109,250,0.07); }
-#     tbody td { padding: 8px 14px; }
-#     tbody td:first-child { color: var(--accent3); }
-
-#     /* ── Error ── */
-#     .error-bubble {
-#       background: rgba(250,109,154,0.07); border: 1px solid rgba(250,109,154,0.2);
-#       color: #fa8db0; border-radius: 12px; padding: 12px 16px; font-size: 0.8rem;
-#     }
-
-#     /* ── Typing indicator ── */
-#     .typing { display: flex; gap: 5px; align-items: center; padding: 14px 16px; }
-#     .typing span {
-#       width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: block;
-#       animation: bounce 1.1s ease-in-out infinite;
-#     }
-#     .typing span:nth-child(2) { animation-delay: 0.18s; background: var(--accent2); }
-#     .typing span:nth-child(3) { animation-delay: 0.36s; background: var(--accent3); }
-#     @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-8px)} }
-
-#     /* ── Input bar ── */
-#     .input-bar {
-#       display: flex; align-items: center; gap: 12px;
-#       padding: 14px 0 18px;
-#       border-top: 1px solid var(--border);
-#     }
-#     .input-wrap {
-#       flex: 1; background: var(--panel); border: 1px solid var(--border);
-#       border-radius: 14px; display: flex; align-items: center;
-#       transition: border-color 0.2s, box-shadow 0.2s;
-#     }
-#     .input-wrap:focus-within {
-#       border-color: rgba(124,109,250,0.6);
-#       box-shadow: 0 0 0 3px rgba(124,109,250,0.12);
-#     }
-#     #q-input {
-#       flex: 1; background: none; border: none; outline: none;
-#       color: var(--text); font-family: var(--font-code); font-size: 0.82rem;
-#       padding: 14px 18px; caret-color: var(--accent);
-#     }
-#     #q-input::placeholder { color: var(--muted); }
-#     .input-hint { padding-right: 16px; font-size: 0.62rem; color: var(--muted); white-space: nowrap; }
-
-#     .send-btn {
-#       width: 48px; height: 48px; border-radius: 14px; border: none; cursor: pointer;
-#       background: linear-gradient(135deg, var(--accent), #5040d0);
-#       color: #fff; display: flex; align-items: center; justify-content: center;
-#       box-shadow: 0 4px 18px rgba(124,109,250,0.4);
-#       transition: transform 0.15s, box-shadow 0.2s; flex-shrink: 0;
-#     }
-#     .send-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(124,109,250,0.55); }
-#     .send-btn:active { transform: translateY(0); }
-#     .send-btn svg { width: 17px; height: 17px; }
-
-#     /* ── Empty state ── */
-#     .empty-state {
-#       flex: 1; display: flex; flex-direction: column;
-#       align-items: center; justify-content: center; gap: 14px;
-#       color: var(--muted); text-align: center; padding-bottom: 40px;
-#       animation: fadeUp 0.5s ease both;
-#     }
-#     .empty-icon {
-#       width: 68px; height: 68px; border-radius: 20px;
-#       background: var(--panel); border: 1px solid var(--border);
-#       display: flex; align-items: center; justify-content: center; font-size: 1.9rem;
-#     }
-#     .empty-title { font-family: var(--font-ui); font-size: 1.1rem; font-weight: 700; color: var(--text); }
-#     .empty-sub { font-size: 0.78rem; max-width: 320px; line-height: 1.65; }
-
-#     .suggestions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding-top: 6px; }
-#     .sug-chip {
-#       background: var(--panel); border: 1px solid var(--border);
-#       border-radius: 20px; padding: 7px 14px; font-size: 0.71rem;
-#       color: var(--muted); cursor: pointer; transition: all 0.2s; font-family: var(--font-code);
-#     }
-#     .sug-chip:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,109,250,0.08); }
-#   </style>
-# </head>
-# <body>
-#   <div class="blob blob-1"></div>
-#   <div class="blob blob-2"></div>
-#   <div class="blob blob-3"></div>
-
-#   <div class="shell">
-#     <header>
-#       <div class="logo">
-#         <div class="logo-dot"></div>
-#         NL<span style="color:var(--accent)">2</span>SQL
-#       </div>
-#       <div class="header-right">
-#         <div class="status-dot"></div>
-#         <span class="badge">Clinic · Gemini 2.0</span>
-#       </div>
-#     </header>
-
-#     <div class="chat-area" id="chat">
-#       <div class="empty-state" id="empty">
-#         <div class="empty-icon">🧠</div>
-#         <div class="empty-title">Ask anything about your data</div>
-#         <div class="empty-sub">Type a question in plain English — I'll generate SQL, run it, and show you the results.</div>
-#         <div class="suggestions">
-#           <span class="sug-chip" onclick="fillAndSend('How many patients do we have?')">How many patients?</span>
-#           <span class="sug-chip" onclick="fillAndSend('List all doctors and their specializations')">All doctors</span>
-#           <span class="sug-chip" onclick="fillAndSend('Top 5 patients by total spending')">Top spenders</span>
-#           <span class="sug-chip" onclick="fillAndSend('Show appointments grouped by status')">Appts by status</span>
-#           <span class="sug-chip" onclick="fillAndSend('What is the total revenue from invoices?')">Total revenue</span>
-#           <span class="sug-chip" onclick="fillAndSend('Which doctor has the most appointments?')">Busiest doctor</span>
-#         </div>
-#       </div>
-#     </div>
-
-#     <div class="input-bar">
-#       <div class="input-wrap">
-#         <input id="q-input" type="text" placeholder="Ask a question about your clinic data…" autocomplete="off"/>
-#         <span class="input-hint">↵ send</span>
-#       </div>
-#       <button class="send-btn" onclick="send()" title="Send">
-#         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-#           <line x1="22" y1="2" x2="11" y2="13"></line>
-#           <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-#         </svg>
-#       </button>
-#     </div>
-#   </div>
-
-#   <script>
-#     const chatEl  = document.getElementById('chat');
-#     const inputEl = document.getElementById('q-input');
-
-#     inputEl.addEventListener('keydown', e => {
-#       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
-#     });
-
-#     function fillAndSend(text) { inputEl.value = text; send(); }
-
-#     function send() {
-#       const q = inputEl.value.trim();
-#       if (!q) return;
-#       inputEl.value = '';
-
-#       const empty = document.getElementById('empty');
-#       if (empty) empty.remove();
-
-#       appendUserMsg(q);
-#       const typingId = appendTyping();
-
-#       fetch('/chat', {
-#         method: 'POST',
-#         headers: { 'Content-Type': 'application/json' },
-#         body: JSON.stringify({ question: q })
-#       })
-#       .then(r => r.json())
-#       .then(data => { removeEl(typingId); appendBotMsg(data); })
-#       .catch(err  => { removeEl(typingId); appendErrorMsg('Network error: ' + err.message); });
-#     }
-
-#     function appendUserMsg(text) {
-#       chat(` +
-#         '`<div class="msg user">' +
-#         '<div class="msg-avatar">YOU</div>' +
-#         '<div class="msg-body"><div class="bubble">${escHtml(text)}</div></div>' +
-#         '</div>`' +
-#       `, { text });
-#     }
-
-#     function appendTyping() {
-#       const id = 'ty' + Date.now();
-#       ins(`<div class="msg bot" id="${id}">
-#         <div class="msg-avatar">AI</div>
-#         <div class="msg-body"><div class="bubble" style="padding:0">
-#           <div class="typing"><span></span><span></span><span></span></div>
-#         </div></div></div>`);
-#       return id;
-#     }
-
-#     function appendBotMsg(data) {
-#       if (data.error) {
-#         ins(`<div class="msg bot">
-#           <div class="msg-avatar">AI</div>
-#           <div class="msg-body"><div class="error-bubble">⚠ ${escHtml(data.error)}</div></div>
-#         </div>`);
-#         return;
-#       }
-
-#       const rows = data.rows || [], cols = data.columns || [];
-#       const sqlId = 'sql' + Date.now();
-
-#       let tableHtml = '';
-#       if (cols.length) {
-#         const ths = cols.map(c => `<th>${escHtml(String(c))}</th>`).join('');
-#         const trs = rows.map(r =>
-#           `<tr>${r.map(v => `<td>${escHtml(String(v ?? ''))}</td>`).join('')}</tr>`
-#         ).join('');
-#         tableHtml = `
-#           <div class="result-wrap">
-#             <div class="result-header">
-#               <span>Results</span>
-#               <span class="result-count">${rows.length} row${rows.length !== 1 ? 's' : ''}</span>
-#             </div>
-#             <div class="tbl-scroll">
-#               <table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>
-#             </div>
-#           </div>`;
-#       }
-
-#       ins(`<div class="msg bot">
-#         <div class="msg-avatar">AI</div>
-#         <div class="msg-body" style="max-width:90%;width:100%">
-#           <div class="bubble">Done — ${rows.length} row${rows.length !== 1 ? 's' : ''} returned.</div>
-#           <div class="sql-block">
-#             <div class="sql-header">
-#               <span class="sql-lang">SQL</span>
-#               <button class="copy-btn" onclick="copySql('${sqlId}')">copy</button>
-#             </div>
-#             <pre class="sql-code" id="${sqlId}">${escHtml(data.sql_query || '')}</pre>
-#           </div>
-#           ${tableHtml}
-#         </div>
-#       </div>`);
-#     }
-
-#     function appendErrorMsg(msg) {
-#       ins(`<div class="msg bot">
-#         <div class="msg-avatar">AI</div>
-#         <div class="msg-body"><div class="error-bubble">⚠ ${escHtml(msg)}</div></div>
-#       </div>`);
-#     }
-
-#     function ins(html) {
-#       const t = document.createElement('template');
-#       t.innerHTML = html.trim();
-#       chatEl.appendChild(t.content.firstChild);
-#       scrollBottom();
-#     }
-
-#     function chat(tpl, vars) {
-#       const t = document.createElement('template');
-#       t.innerHTML = tpl.trim();
-#       chatEl.appendChild(t.content.firstChild);
-#       scrollBottom();
-#     }
-
-#     function removeEl(id) { const e = document.getElementById(id); if (e) e.remove(); }
-
-#     function copySql(id) {
-#       const el = document.getElementById(id);
-#       if (!el) return;
-#       navigator.clipboard.writeText(el.textContent).then(() => {
-#         const btn = el.closest('.sql-block').querySelector('.copy-btn');
-#         const orig = btn.textContent;
-#         btn.textContent = 'copied!'; btn.style.color = 'var(--accent3)';
-#         setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1500);
-#       });
-#     }
-
-#     function escHtml(s) {
-#       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-#     }
-
-#     function scrollBottom() { setTimeout(() => { chatEl.scrollTop = chatEl.scrollHeight; }, 50); }
-#   </script>
-# </body>
-# </html>"""
-
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -504,6 +37,11 @@ def chat(req: Question):
         return format_error(str(e))
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.get("/")
 def root():
     return {"message": "NL2SQL API is running 🚀"}
@@ -516,237 +54,706 @@ def ui():
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NL2SQL AI</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<title>NL2SQL — Clinic Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif;}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-body{
-  background:#0b0b12;
-  color:#fff;
-  height:100vh;
-  overflow:hidden;
+:root {
+  --ink:       #0d0d14;
+  --ink2:      #1a1a28;
+  --ink3:      #252538;
+  --glass:     rgba(255,255,255,0.04);
+  --glass2:    rgba(255,255,255,0.07);
+  --rim:       rgba(255,255,255,0.09);
+  --rim2:      rgba(255,255,255,0.15);
+  --gold:      #c9a96e;
+  --gold2:     #e8c88a;
+  --rose:      #d4607a;
+  --teal:      #4ecdc4;
+  --muted:     rgba(255,255,255,0.35);
+  --text:      rgba(255,255,255,0.88);
+  --radius:    14px;
+  --serif:     'DM Serif Display', Georgia, serif;
+  --mono:      'DM Mono', monospace;
+  --sans:      'DM Sans', sans-serif;
 }
 
-/* background glow */
-.bg::before,.bg::after{
-  content:"";
-  position:fixed;
-  width:500px;height:500px;
-  border-radius:50%;
-  filter:blur(120px);
-  z-index:0;
-}
-.bg::before{background:#7c6dfa;top:-100px;left:-100px;}
-.bg::after{background:#fa6d9a;bottom:-100px;right:-100px;}
-
-.container{
-  position:relative;
-  z-index:1;
-  height:100%;
-  display:flex;
-  flex-direction:column;
+html, body {
+  height: 100%;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--sans);
+  overflow: hidden;
 }
 
-/* header */
-header{
-  height:70px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:20px;
-  font-weight:700;
+/* ── Animated mesh background ── */
+.bg-mesh {
+  position: fixed; inset: 0; z-index: 0; overflow: hidden;
 }
 
-/* HERO CENTER */
-.hero{
-  flex:1;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
+.bg-mesh::before {
+  content: '';
+  position: absolute; inset: -50%;
+  background:
+    radial-gradient(ellipse 800px 600px at 20% 30%, rgba(201,169,110,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 600px 800px at 80% 70%, rgba(212,96,122,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 500px at 50% 90%, rgba(78,205,196,0.07) 0%, transparent 60%);
+  animation: meshDrift 18s ease-in-out infinite alternate;
 }
 
-.hero h1{
-  font-size:42px;
-  margin-bottom:10px;
+@keyframes meshDrift {
+  0%   { transform: translate(0,0) rotate(0deg) scale(1); }
+  33%  { transform: translate(30px,-20px) rotate(1deg) scale(1.02); }
+  66%  { transform: translate(-20px,30px) rotate(-1deg) scale(0.98); }
+  100% { transform: translate(10px,10px) rotate(0.5deg) scale(1.01); }
 }
 
-.hero p{
-  color:#888;
-  margin-bottom:30px;
+/* Grid overlay */
+.bg-grid {
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
 }
 
-/* BIG SEARCH */
-.search-box{
-  width:700px;
-  max-width:90%;
-  display:flex;
-  background:rgba(255,255,255,0.05);
-  border-radius:20px;
-  padding:10px;
-  backdrop-filter:blur(12px);
+/* Vignette */
+.bg-vignette {
+  position: fixed; inset: 0; z-index: 0;
+  background: radial-gradient(ellipse 120% 100% at 50% 0%, transparent 40%, rgba(13,13,20,0.7) 100%);
 }
 
-.search-box input{
-  flex:1;
-  background:none;
-  border:none;
-  outline:none;
-  color:white;
-  font-size:16px;
-  padding:15px;
+/* ── Layout shell ── */
+.shell {
+  position: relative; z-index: 1;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: 68px 1fr auto;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 28px;
 }
 
-.search-box button{
-  background:#7c6dfa;
-  border:none;
-  padding:14px 20px;
-  border-radius:14px;
-  color:white;
-  cursor:pointer;
+/* ── Header ── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--rim);
 }
 
-/* CHAT */
-.chat{
-  display:none;
-  flex:1;
-  overflow:auto;
-  padding:30px 15%;
+.logo {
+  font-family: var(--serif);
+  font-size: 1.35rem;
+  letter-spacing: -0.01em;
+  display: flex; align-items: center; gap: 12px;
 }
 
-.msg{margin-bottom:20px;}
-
-.user{text-align:right;}
-
-.bubble{
-  display:inline-block;
-  padding:14px;
-  border-radius:12px;
-  max-width:70%;
+.logo-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--gold) 0%, var(--rose) 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 16px rgba(201,169,110,0.3);
 }
 
-.user .bubble{background:#7c6dfa;}
-.bot .bubble{background:#1a1a2e;}
-
-.sql{
-  background:#000;
-  padding:10px;
-  margin-top:10px;
-  border-radius:8px;
-  color:#9b9eff;
+.logo em {
+  font-style: italic;
+  color: var(--gold);
 }
 
-table{
-  width:100%;
-  margin-top:10px;
-  border-collapse:collapse;
+.hdr-pills {
+  display: flex; gap: 8px; align-items: center;
 }
 
-td,th{
-  padding:10px;
-  border-bottom:1px solid rgba(255,255,255,0.1);
+.pill {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--rim);
+  color: var(--muted);
+  background: var(--glass);
 }
 
-/* bottom input */
-.bottom{
-  display:none;
-  padding:20px 15%;
+.pill.live {
+  border-color: rgba(78,205,196,0.3);
+  color: var(--teal);
+  background: rgba(78,205,196,0.06);
 }
+
+.pulse-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--teal);
+  margin-right: 5px;
+  animation: pulse 2.4s ease-in-out infinite;
+  box-shadow: 0 0 6px var(--teal);
+}
+
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:0.4; transform:scale(0.7); }
+}
+
+/* ── Chat area ── */
+.chat {
+  overflow-y: auto;
+  padding: 32px 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rim) transparent;
+}
+
+.chat::-webkit-scrollbar { width: 3px; }
+.chat::-webkit-scrollbar-thumb { background: var(--rim); border-radius: 3px; }
+
+/* ── Hero / empty state ── */
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  text-align: center;
+  gap: 20px;
+  padding-bottom: 40px;
+  animation: fadeUp 0.6s ease both;
+}
+
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(16px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+.hero-badge {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border: 1px solid rgba(201,169,110,0.3);
+  background: rgba(201,169,110,0.06);
+  padding: 5px 14px;
+  border-radius: 20px;
+}
+
+.hero h1 {
+  font-family: var(--serif);
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  max-width: 560px;
+}
+
+.hero h1 em {
+  font-style: italic;
+  background: linear-gradient(90deg, var(--gold), var(--rose));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero p {
+  font-size: 0.88rem;
+  color: var(--muted);
+  max-width: 380px;
+  line-height: 1.7;
+}
+
+/* Suggestion chips */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.chip {
+  font-family: var(--mono);
+  font-size: 0.71rem;
+  padding: 8px 14px;
+  border-radius: 24px;
+  border: 1px solid var(--rim);
+  background: var(--glass);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chip:hover {
+  border-color: rgba(201,169,110,0.4);
+  color: var(--gold2);
+  background: rgba(201,169,110,0.06);
+  transform: translateY(-1px);
+}
+
+/* ── Messages ── */
+.msg {
+  display: flex;
+  gap: 14px;
+  animation: fadeUp 0.3s ease both;
+}
+
+.msg.user { flex-direction: row-reverse; }
+
+.avatar {
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+.msg.user .avatar {
+  background: linear-gradient(135deg, var(--gold) 0%, var(--rose) 100%);
+  color: #fff;
+}
+
+.msg.bot .avatar {
+  background: var(--glass2);
+  border: 1px solid var(--rim);
+  color: var(--teal);
+}
+
+.msg-body {
+  max-width: 84%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.msg.user .msg-body { align-items: flex-end; }
+
+/* Bubble */
+.bubble {
+  padding: 12px 18px;
+  border-radius: var(--radius);
+  font-size: 0.84rem;
+  line-height: 1.65;
+}
+
+.msg.user .bubble {
+  background: linear-gradient(135deg, rgba(201,169,110,0.2), rgba(212,96,122,0.15));
+  border: 1px solid rgba(201,169,110,0.2);
+  border-bottom-right-radius: 4px;
+}
+
+.msg.bot .bubble {
+  background: var(--glass);
+  border: 1px solid var(--rim);
+  border-bottom-left-radius: 4px;
+}
+
+/* SQL card */
+.sql-card {
+  background: #080810;
+  border: 1px solid var(--rim);
+  border-radius: var(--radius);
+  overflow: hidden;
+  width: 100%;
+}
+
+.sql-card-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--rim);
+}
+
+.sql-lang-tag {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--teal);
+  display: flex; align-items: center; gap: 6px;
+}
+
+.sql-lang-tag::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--teal);
+}
+
+.copy-btn {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--rim);
+  background: var(--glass);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.copy-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+.sql-code {
+  padding: 16px 18px;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.8;
+  color: #9fa8ff;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Results table */
+.results-card {
+  background: var(--glass);
+  border: 1px solid var(--rim);
+  border-radius: var(--radius);
+  overflow: hidden;
+  width: 100%;
+}
+
+.results-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--rim);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.row-count {
+  color: var(--gold);
+  font-weight: 500;
+}
+
+.tbl-wrap {
+  overflow-x: auto;
+  max-height: 260px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rim) transparent;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+}
+
+thead th {
+  padding: 9px 16px;
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--ink2);
+  position: sticky; top: 0; z-index: 2;
+  border-bottom: 1px solid var(--rim);
+}
+
+tbody tr {
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  transition: background 0.15s;
+}
+
+tbody tr:hover { background: rgba(201,169,110,0.04); }
+
+tbody td { padding: 9px 16px; }
+tbody td:first-child { color: var(--gold2); font-family: var(--mono); }
+
+/* Error */
+.error-card {
+  background: rgba(212,96,122,0.07);
+  border: 1px solid rgba(212,96,122,0.2);
+  border-radius: var(--radius);
+  padding: 12px 18px;
+  font-size: 0.82rem;
+  color: #f09ab0;
+}
+
+/* Typing indicator */
+.typing-wrap { display: flex; gap: 5px; align-items: center; padding: 14px 18px; }
+.typing-wrap span {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  display: block;
+  animation: bounce 1.1s ease-in-out infinite;
+}
+.typing-wrap span:nth-child(1) { background: var(--gold); }
+.typing-wrap span:nth-child(2) { background: var(--rose); animation-delay: 0.18s; }
+.typing-wrap span:nth-child(3) { background: var(--teal); animation-delay: 0.36s; }
+
+@keyframes bounce {
+  0%,60%,100% { transform: translateY(0); }
+  30%          { transform: translateY(-8px); }
+}
+
+/* ── Input bar ── */
+.input-bar {
+  display: flex;
+  gap: 12px;
+  padding: 14px 0 20px;
+  border-top: 1px solid var(--rim);
+}
+
+.input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--glass);
+  border: 1px solid var(--rim);
+  border-radius: var(--radius);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-wrap:focus-within {
+  border-color: rgba(201,169,110,0.4);
+  box-shadow: 0 0 0 3px rgba(201,169,110,0.08);
+}
+
+.input-wrap input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.84rem;
+  padding: 15px 18px;
+  caret-color: var(--gold);
+}
+
+.input-wrap input::placeholder { color: var(--muted); }
+
+.input-hint {
+  padding-right: 16px;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.2);
+  white-space: nowrap;
+}
+
+.send-btn {
+  width: 50px; height: 50px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--gold) 0%, var(--rose) 100%);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 20px rgba(201,169,110,0.3);
+  transition: transform 0.15s, box-shadow 0.2s;
+  flex-shrink: 0;
+}
+
+.send-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(201,169,110,0.45);
+}
+
+.send-btn:active { transform: translateY(0); }
+
+.send-btn svg { width: 18px; height: 18px; }
 </style>
 </head>
 
-<body class="bg">
+<body>
+  <div class="bg-mesh"></div>
+  <div class="bg-grid"></div>
+  <div class="bg-vignette"></div>
 
-<div class="container">
+  <div class="shell">
+    <header>
+      <div class="logo">
+        <div class="logo-icon">⚡</div>
+        NL<em>2</em>SQL
+      </div>
+      <div class="hdr-pills">
+        <span class="pill live"><span class="pulse-dot"></span>Live</span>
+        <span class="pill">Clinic DB</span>
+        <span class="pill">Gemini 2.0</span>
+      </div>
+    </header>
 
-<header>NL2SQL AI</header>
+    <div class="chat" id="chat">
+      <div class="hero" id="hero">
+        <div class="hero-badge">Clinic Intelligence System</div>
+        <h1>Ask your database <em>anything</em></h1>
+        <p>Type a question in plain English — the AI generates SQL, runs it, and returns structured results instantly.</p>
+        <div class="chips">
+          <span class="chip" onclick="fillAndSend('How many patients do we have?')">How many patients?</span>
+          <span class="chip" onclick="fillAndSend('List all doctors and their specializations')">All doctors</span>
+          <span class="chip" onclick="fillAndSend('Top 5 patients by total spending')">Top spenders</span>
+          <span class="chip" onclick="fillAndSend('Show appointments grouped by status')">Appts by status</span>
+          <span class="chip" onclick="fillAndSend('What is the total revenue from invoices?')">Total revenue</span>
+          <span class="chip" onclick="fillAndSend('Which doctor has the most appointments?')">Busiest doctor</span>
+        </div>
+      </div>
+    </div>
 
-<div class="hero" id="hero">
-  <h1>Ask your database anything</h1>
-  <p>AI generates SQL + results instantly</p>
-
-  <div class="search-box">
-    <input id="q1" placeholder="Ask your question..."/>
-    <button onclick="start()">Ask</button>
+    <div class="input-bar">
+      <div class="input-wrap">
+        <input id="q-input" type="text" placeholder="Ask a question about your clinic data…" autocomplete="off"/>
+        <span class="input-hint">↵ send</span>
+      </div>
+      <button class="send-btn" onclick="send()" title="Send">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </div>
   </div>
-</div>
 
-<div class="chat" id="chat"></div>
+  <script>
+    const chatEl  = document.getElementById('chat');
+    const inputEl = document.getElementById('q-input');
 
-<div class="bottom" id="bottom">
-  <div class="search-box">
-    <input id="q2" placeholder="Ask again..."/>
-    <button onclick="send()">Ask</button>
-  </div>
-</div>
+    inputEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+    });
 
-</div>
+    function fillAndSend(text) { inputEl.value = text; send(); }
 
-<script>
-const hero=document.getElementById("hero");
-const chat=document.getElementById("chat");
-const bottom=document.getElementById("bottom");
-
-function start(){
-  const q=document.getElementById("q1").value;
-  if(!q) return;
-
-  hero.style.display="none";
-  chat.style.display="block";
-  bottom.style.display="block";
-
-  add(q,"user");
-  fetchData(q);
-}
-
-function send(){
-  const q=document.getElementById("q2").value;
-  if(!q) return;
-
-  add(q,"user");
-  fetchData(q);
-}
-
-function add(text,type){
-  const div=document.createElement("div");
-  div.className="msg "+type;
-  div.innerHTML=`<div class="bubble">${text}</div>`;
-  chat.appendChild(div);
-}
-
-function fetchData(q){
-  fetch('/chat',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({question:q})
-  })
-  .then(r=>r.json())
-  .then(d=>{
-    let html=`<div class="bubble">Done</div>`;
-
-    if(d.sql){
-      html+=`<div class="sql">${d.sql}</div>`;
+    function esc(s) {
+      return String(s)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;');
     }
 
-    if(d.columns){
-      html+=`<table><tr>${d.columns.map(c=>`<th>${c}</th>`).join('')}</tr>`;
-      d.rows.forEach(r=>{
-        html+=`<tr>${r.map(x=>`<td>${x}</td>`).join('')}</tr>`;
+    function ins(html) {
+      const t = document.createElement('template');
+      t.innerHTML = html.trim();
+      chatEl.appendChild(t.content.firstChild);
+      scrollBottom();
+    }
+
+    function removeEl(id) { const e = document.getElementById(id); if(e) e.remove(); }
+
+    function scrollBottom() { setTimeout(() => { chatEl.scrollTop = chatEl.scrollHeight; }, 50); }
+
+    function send() {
+      const q = inputEl.value.trim();
+      if (!q) return;
+      inputEl.value = '';
+
+      const hero = document.getElementById('hero');
+      if (hero) hero.remove();
+
+      // User bubble
+      ins(`<div class="msg user">
+        <div class="avatar">YOU</div>
+        <div class="msg-body"><div class="bubble">${esc(q)}</div></div>
+      </div>`);
+
+      // Typing indicator
+      const tid = 'ty' + Date.now();
+      ins(`<div class="msg bot" id="${tid}">
+        <div class="avatar">AI</div>
+        <div class="msg-body">
+          <div class="bubble" style="padding:0">
+            <div class="typing-wrap"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+      </div>`);
+
+      fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: q })
+      })
+      .then(r => r.json())
+      .then(data => { removeEl(tid); appendBot(data); })
+      .catch(err  => { removeEl(tid); appendError('Network error: ' + err.message); });
+    }
+
+    function appendBot(data) {
+      if (data.error) {
+        ins(`<div class="msg bot">
+          <div class="avatar">AI</div>
+          <div class="msg-body"><div class="error-card">⚠ ${esc(data.error)}</div></div>
+        </div>`);
+        return;
+      }
+
+      const rows = data.rows    || [];
+      const cols = data.columns || [];
+      const sql  = data.sql_query || '';   // ✅ FIXED: was d.sql, now correctly d.sql_query
+      const sqlId = 'sql' + Date.now();
+
+      // Table HTML
+      let tableHtml = '';
+      if (cols.length) {
+        const ths = cols.map(c => `<th>${esc(String(c))}</th>`).join('');
+        const trs = rows.map(r =>
+          `<tr>${r.map(v => `<td>${esc(String(v ?? '—'))}</td>`).join('')}</tr>`
+        ).join('');
+        tableHtml = `
+          <div class="results-card">
+            <div class="results-hdr">
+              <span>Results</span>
+              <span class="row-count">${rows.length} row${rows.length !== 1 ? 's' : ''}</span>
+            </div>
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr>${ths}</tr></thead>
+                <tbody>${trs}</tbody>
+              </table>
+            </div>
+          </div>`;
+      }
+
+      ins(`<div class="msg bot">
+        <div class="avatar">AI</div>
+        <div class="msg-body" style="max-width:92%;width:100%">
+          <div class="bubble">
+            Returned <strong>${rows.length}</strong> row${rows.length !== 1 ? 's' : ''}.
+          </div>
+          <div class="sql-card">
+            <div class="sql-card-hdr">
+              <span class="sql-lang-tag">SQL</span>
+              <button class="copy-btn" onclick="copySql('${sqlId}')">copy</button>
+            </div>
+            <pre class="sql-code" id="${sqlId}">${esc(sql)}</pre>
+          </div>
+          ${tableHtml}
+        </div>
+      </div>`);
+    }
+
+    function appendError(msg) {
+      ins(`<div class="msg bot">
+        <div class="avatar">AI</div>
+        <div class="msg-body"><div class="error-card">⚠ ${esc(msg)}</div></div>
+      </div>`);
+    }
+
+    function copySql(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      navigator.clipboard.writeText(el.textContent).then(() => {
+        const btn = el.closest('.sql-card').querySelector('.copy-btn');
+        const orig = btn.textContent;
+        btn.textContent = 'copied!';
+        btn.style.color = 'var(--teal)';
+        setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1600);
       });
-      html+=`</table>`;
     }
-
-    const div=document.createElement("div");
-    div.className="msg bot";
-    div.innerHTML=html;
-    chat.appendChild(div);
-  });
-}
-</script>
-
+  </script>
 </body>
 </html>"""

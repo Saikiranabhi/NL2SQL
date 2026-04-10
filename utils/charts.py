@@ -1,3 +1,4 @@
+import json
 import plotly.express as px
 import pandas as pd
 
@@ -5,7 +6,7 @@ import pandas as pd
 def generate_chart(columns: list, rows: list):
     """
     Generates a simple chart from query results.
-    Assumes first column = x-axis, second column = y-axis.
+    Returns a JSON-serializable dict (not raw Plotly object).
     """
 
     if not columns or not rows or len(columns) < 2:
@@ -19,7 +20,8 @@ def generate_chart(columns: list, rows: list):
 
         fig = px.bar(df, x=x_col, y=y_col)
 
-        return fig.to_dict()
+        # ✅ FIX: convert to JSON string then parse back to plain dict
+        return json.loads(fig.to_json())
 
     except Exception:
         return None
