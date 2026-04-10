@@ -101,7 +101,7 @@ project/
 ### 1️⃣ Clone Repository
 
 ```bash
-git clone <your-repo-link>
+git clone <https://github.com/Saikiranabhi/NL2SQL.git>
 cd project
 ```
 
@@ -135,7 +135,7 @@ python seed_memory.py
 ### 6️⃣ Run Server
 
 ```bash
-uvicorn main:app --port 8000
+uvicorn main:app --reload --port 8000
 ```
 
 ---
